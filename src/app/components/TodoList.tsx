@@ -1,7 +1,7 @@
-import { useState } from 'react';
+'use client';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TodoItem } from './TodoItem';
-import { sounds } from '../sounds';
 
 interface Todo {
   id: string;
@@ -11,20 +11,34 @@ interface Todo {
 
 export const TodoList = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [input, setInput] = useState('');
+  const [newTodo, setNewTodo] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
-  const addTodo = (text: string) => {
-    if (text.trim()) {
+  // Load todos from localStorage
+  useEffect(() => {
+    const savedTodos = localStorage.getItem('todos');
+    if (savedTodos) {
+      setTodos(JSON.parse(savedTodos));
+    }
+  }, []);
+
+  // Save todos to localStorage
+  useEffect(() => {
+    localStorage.setItem('todos', JSON.stringify(todos));
+  }, [todos]);
+
+  const addTodo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTodo.trim()) {
       setTodos([
         ...todos,
         {
           id: Date.now().toString(),
-          text: text.trim(),
+          text: newTodo.trim(),
           completed: false,
         },
       ]);
-      sounds.pop.play();
-      setInput('');
+      setNewTodo('');
     }
   };
 
@@ -41,56 +55,97 @@ export const TodoList = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h1 className="text-3xl font-bold text-center mb-8 text-pink-500">
-        ✨ Cute Todo List ✨
-      </h1>
+    <motion.div
+      className="w-full max-w-lg mx-auto p-6 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
+      <motion.h1 
+        className="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-transparent bg-clip-text"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        ✨ My Cute Todo List ✨
+      </motion.h1>
 
-      <div className="mb-6">
+      <form onSubmit={addTodo} className="mb-8 relative">
         <motion.div
-          className="flex gap-2"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          className={`absolute inset-0 rounded-2xl transition-all duration-300 ${
+            isInputFocused
+              ? 'bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200 opacity-50'
+              : 'opacity-0'
+          }`}
+          layoutId="input-background"
+        />
+        <input
+          type="text"
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
+          placeholder="Add a new task..."
+          className="w-full px-6 py-4 bg-white/50 backdrop-blur-sm rounded-2xl shadow-inner
+            border-2 border-transparent focus:border-pink-200 outline-none
+            text-gray-700 placeholder-gray-400 transition-all duration-300 relative z-10"
+        />
+        <motion.button
+          type="submit"
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-20
+            px-4 py-2 bg-gradient-to-r from-pink-400 to-purple-400
+            text-white rounded-xl shadow-md hover:shadow-lg
+            disabled:opacity-50 disabled:cursor-not-allowed
+            transition-all duration-300"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          disabled={!newTodo.trim()}
         >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addTodo(input)}
-            placeholder="Add a cute task..."
-            className="flex-grow px-4 py-2 rounded-lg border-2 border-pink-200 focus:border-pink-400 focus:outline-none"
-          />
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => addTodo(input)}
-            className="px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
-          >
-            Add
-          </motion.button>
-        </motion.div>
-      </div>
+          Add ✨
+        </motion.button>
+      </form>
 
-      <AnimatePresence>
-        {todos.map((todo) => (
-          <TodoItem
-            key={todo.id}
-            {...todo}
-            onToggle={toggleTodo}
-            onDelete={deleteTodo}
-          />
-        ))}
-      </AnimatePresence>
+      <motion.div 
+        className="space-y-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+      >
+        <AnimatePresence mode="popLayout">
+          {todos.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center py-8 text-gray-500 italic"
+            >
+              ✨ Your todo list is empty. Add some tasks! ✨
+            </motion.div>
+          ) : (
+            todos.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                id={todo.id}
+                text={todo.text}
+                completed={todo.completed}
+                onToggle={toggleTodo}
+                onDelete={deleteTodo}
+              />
+            ))
+          )}
+        </AnimatePresence>
+      </motion.div>
 
-      {todos.length === 0 && (
+      {todos.length > 0 && (
         <motion.div
+          className="mt-6 text-center text-sm text-gray-500"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center text-gray-500 mt-8"
+          transition={{ delay: 0.6 }}
         >
-          No tasks yet! Add something cute to do! 🌸
+          {todos.filter(t => t.completed).length} of {todos.length} tasks completed
         </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }; 
