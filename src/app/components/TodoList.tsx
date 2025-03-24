@@ -1,7 +1,8 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TodoItem } from './TodoItem';
+import { FaHeart } from 'react-icons/fa';
 
 interface Todo {
   id: string;
@@ -9,143 +10,124 @@ interface Todo {
   completed: boolean;
 }
 
-export const TodoList = () => {
+export default function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState('');
-  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load todos from localStorage
   useEffect(() => {
     const savedTodos = localStorage.getItem('todos');
     if (savedTodos) {
       setTodos(JSON.parse(savedTodos));
     }
+    setIsLoading(false);
   }, []);
 
-  // Save todos to localStorage
   useEffect(() => {
-    localStorage.setItem('todos', JSON.stringify(todos));
-  }, [todos]);
+    if (!isLoading) {
+      localStorage.setItem('todos', JSON.stringify(todos));
+    }
+  }, [todos, isLoading]);
 
   const addTodo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newTodo.trim()) {
-      setTodos([
-        ...todos,
-        {
-          id: Date.now().toString(),
-          text: newTodo.trim(),
-          completed: false,
-        },
-      ]);
-      setNewTodo('');
-    }
+    if (!newTodo.trim()) return;
+    
+    setTodos([...todos, {
+      id: Date.now().toString(),
+      text: newTodo.trim(),
+      completed: false
+    }]);
+    setNewTodo('');
   };
 
   const toggleTodo = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
   };
 
   const deleteTodo = (id: string) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+    setTodos(todos.filter(todo => todo.id !== id));
   };
 
   return (
-    <motion.div
-      className="w-full max-w-lg mx-auto p-6 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      <motion.h1 
-        className="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-transparent bg-clip-text"
+    <div className="max-w-md mx-auto bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+      <motion.form
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        className="mb-8"
+        onSubmit={addTodo}
       >
-        ✨ My Cute Todo List ✨
-      </motion.h1>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newTodo}
+            onChange={(e) => setNewTodo(e.target.value)}
+            placeholder="✨ Add a new task..."
+            className="flex-1 px-4 py-2 rounded-full border-2 border-pink-200 focus:border-pink-400 focus:outline-none bg-white/90 placeholder-pink-300 text-gray-700"
+          />
+          <motion.button
+            type="submit"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-6 py-2 bg-gradient-to-r from-pink-400 to-purple-400 text-white rounded-full hover:from-pink-500 hover:to-purple-500 transition-all duration-200 flex items-center gap-2 shadow-md"
+          >
+            <FaHeart className="text-sm" />
+            Add
+          </motion.button>
+        </div>
+      </motion.form>
 
-      <form onSubmit={addTodo} className="mb-8 relative">
-        <motion.div
-          className={`absolute inset-0 rounded-2xl transition-all duration-300 ${
-            isInputFocused
-              ? 'bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200 opacity-50'
-              : 'opacity-0'
-          }`}
-          layoutId="input-background"
-        />
-        <input
-          type="text"
-          value={newTodo}
-          onChange={(e) => setNewTodo(e.target.value)}
-          onFocus={() => setIsInputFocused(true)}
-          onBlur={() => setIsInputFocused(false)}
-          placeholder="Add a new task..."
-          className="w-full px-6 py-4 bg-white/50 backdrop-blur-sm rounded-2xl shadow-inner
-            border-2 border-transparent focus:border-pink-200 outline-none
-            text-gray-700 placeholder-gray-400 transition-all duration-300 relative z-10"
-        />
-        <motion.button
-          type="submit"
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20
-            px-4 py-2 bg-gradient-to-r from-pink-400 to-purple-400
-            text-white rounded-xl shadow-md hover:shadow-lg
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-300"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          disabled={!newTodo.trim()}
-        >
-          Add ✨
-        </motion.button>
-      </form>
-
-      <motion.div 
-        className="space-y-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-      >
-        <AnimatePresence mode="popLayout">
-          {todos.length === 0 ? (
+      <AnimatePresence mode="popLayout">
+        <motion.div className="space-y-3">
+          {todos.map(todo => (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="text-center py-8 text-gray-500 italic"
+              key={todo.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              whileHover={{ scale: 1.02 }}
+              layout
+              className={`p-4 rounded-xl shadow-sm border-2 transition-all duration-300 ${
+                todo.completed 
+                  ? 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-100' 
+                  : 'bg-white border-pink-200'
+              }`}
             >
-              ✨ Your todo list is empty. Add some tasks! ✨
+              <div className="flex items-center gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => toggleTodo(todo.id)}
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${
+                    todo.completed 
+                      ? 'bg-gradient-to-r from-pink-400 to-purple-400 border-transparent' 
+                      : 'border-pink-300 hover:border-pink-400'
+                  }`}
+                >
+                  {todo.completed && <FaHeart className="text-white text-sm" />}
+                </motion.button>
+                <span className={`flex-1 transition-all duration-300 ${
+                  todo.completed 
+                    ? 'line-through text-pink-300' 
+                    : 'text-gray-700'
+                }`}>
+                  {todo.text}
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => deleteTodo(todo.id)}
+                  className="text-pink-400 hover:text-pink-600 transition-colors duration-200 text-xl font-light"
+                >
+                  ×
+                </motion.button>
+              </div>
             </motion.div>
-          ) : (
-            todos.map((todo) => (
-              <TodoItem
-                key={todo.id}
-                id={todo.id}
-                text={todo.text}
-                completed={todo.completed}
-                onToggle={toggleTodo}
-                onDelete={deleteTodo}
-              />
-            ))
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {todos.length > 0 && (
-        <motion.div
-          className="mt-6 text-center text-sm text-gray-500"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-        >
-          {todos.filter(t => t.completed).length} of {todos.length} tasks completed
+          ))}
         </motion.div>
-      )}
-    </motion.div>
+      </AnimatePresence>
+    </div>
   );
-}; 
+} 
